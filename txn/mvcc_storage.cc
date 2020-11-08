@@ -48,6 +48,7 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
   // Hint: Iterate the version_lists and return the verion whose write timestamp
   // (version_id) is the largest write timestamp less than or equal to txn_unique_id.
   
+  
   return true;
 }
 

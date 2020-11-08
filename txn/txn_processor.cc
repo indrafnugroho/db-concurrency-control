@@ -310,6 +310,10 @@ void TxnProcessor::RunOCCScheduler() {
   }
 }
 
+void TxnProcessor::MVCCExecuteTxn(Txn *txn){
+  
+}
+
 void TxnProcessor::RunMVCCScheduler() {
   // CPSC 438/538:
   //
@@ -320,6 +324,15 @@ void TxnProcessor::RunMVCCScheduler() {
   //
   // [For now, run serial scheduler in order to make it through the test
   // suite]
-  RunSerialScheduler();
+
+  Txn *txn;
+  while (tp_.Active()) {
+    if (txn_requests_.Pop(&txn)) {
+      tp_.RunTask(new Method<TxnProcessor, void, Txn*>(this, &TxnProcessor::MVCCExecuteTxn, txn));
+    }
+    
+  }
+  
+  //RunSerialScheduler();
 }
 
