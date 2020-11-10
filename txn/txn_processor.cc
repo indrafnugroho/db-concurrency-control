@@ -85,31 +85,6 @@ void TxnProcessor::RunScheduler() {
   }
 }
 
-void TxnProcessor::RunSerialScheduler() {
-  Txn* txn;
-  while (tp_.Active()) {
-    // Get next txn request.
-    if (txn_requests_.Pop(&txn)) {
-      // Execute txn.
-      ExecuteTxn(txn);
-
-      // Commit/abort txn according to program logic's commit/abort decision.
-      if (txn->Status() == COMPLETED_C) {
-        ApplyWrites(txn);
-        txn->status_ = COMMITTED;
-      } else if (txn->Status() == COMPLETED_A) {
-        txn->status_ = ABORTED;
-      } else {
-        // Invalid TxnStatus!
-        DIE("Completed Txn has invalid TxnStatus: " << txn->Status());
-      }
-
-      // Return result to client.
-      txn_results_.Push(txn);
-    }
-  }
-}
-
 void TxnProcessor::RunLockingScheduler() {
   Txn* txn;
   while (tp_.Active()) {

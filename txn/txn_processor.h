@@ -66,9 +66,6 @@ class TxnProcessor {
   // Parallel executtion/validation for OCC
   void ExecuteTxnParallel(Txn *txn);
 
-  // Serial version of scheduler.
-  void RunSerialScheduler();
-
   // Locking version of scheduler.
   void RunLockingScheduler();
 

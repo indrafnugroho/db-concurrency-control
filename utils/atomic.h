@@ -1,30 +1,3 @@
-/// @file
-/// @author Alexander Thomson <thomson@cs.yale.edu>
-///
-/// Modified by Christina Wallin <christina.wallin@yale.edu>
-///
-/// Single-threaded performance (tick.zoo.cs.yale.edu, 12/11/11):
-///
-///    Atomic<int>:
-///      Increment: 23.1 ns
-///      Assignment: 23.5 ns
-///
-///    Atomic<ByteArray<1024> >:
-///      Assignment: 91.7 ns
-///
-///    AtomicQueue<int>:
-///      Push/Pop: 90.2 ns
-///
-///    AtomicMap<int, int> [10 elements]:
-///      Set/Erase: 299.5 ns
-///      Lookup: 60.9 ns
-///    AtomicMap<int, int> [1000 elements]:
-///      Set/Erase: 290.8 ns
-///      Lookup: 56.6 ns
-///    AtomicMap<int, int> [1000000 elements]:
-///      Set/Erase: 301.4 ns
-///      Lookup: 61.5 ns
-///
 
 #ifndef _DB_UTILS_ATOMIC_H_
 #define _DB_UTILS_ATOMIC_H_
