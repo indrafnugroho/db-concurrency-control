@@ -47,9 +47,21 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
   
   // Hint: Iterate the version_lists and return the verion whose write timestamp
   // (version_id) is the largest write timestamp less than or equal to txn_unique_id.
-  
-  
-  return true;
+  bool valid = false;
+  if (mvcc_data_.count(key)) {
+      int largest_version_id_ = 0;
+      for (deque<Version*>::iterator it = mvcc_data_[key]->begin(); it != mvcc_data_[key]->end(); ++it) {
+          if ((*it)->version_id_ <= txn_unique_id && (*it)->version_id_ > largest_version_id_){
+              largest_version_id_ = (*it)->version_id_;
+              if (txn_unique_id > (*it)->max_read_id_){
+                  (*it)->max_read_id_ = txn_unique_id;
+              }
+              *result = (*it)->value_;
+              valid = true;
+          }
+      }
+  }
+  return valid;
 }
 
 
@@ -65,8 +77,13 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
   // write_set. Return true if this key passes the check, return false if not. 
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
-  
-  
+  if (mvcc_data_.count(key)){
+      for (deque<Version*>::iterator it = mvcc_data_[key]->begin(); it != mvcc_data_[key]->end(); ++it) {
+          if ((*it)->version_id_ > txn_unique_id || (*it)->max_read_id_ > txn_unique_id) {
+              return false;
+          } 
+      }
+  }
   return true;
 }
 
@@ -80,6 +97,23 @@ void MVCCStorage::Write(Key key, Value value, int txn_unique_id) {
   // into the version_lists. Note that InitStorage() also calls this method to init storage. 
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
+
+  Version *new_version = new Version;
+	new_version->value_ 				= value;
+	new_version->version_id_ 	  = txn_unique_id;
+	new_version->max_read_id_ 	= txn_unique_id;
+
+	deque<Version*>* version_lists;
+
+	if(mvcc_data_.count(key) > 0) { //key exists
+		version_lists = mvcc_data_[key];
+	} else { // key not exists
+		version_lists = new deque<Version*>();
+		mvcc_data_[key] = version_lists;
+	}
+
+  //push to deque
+	version_lists->push_front(new_version);
 }
 
 

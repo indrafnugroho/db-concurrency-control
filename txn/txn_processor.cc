@@ -7,7 +7,7 @@
 #include "txn/txn_processor.h"
 #include <stdio.h>
 #include <set>
-
+#include <iostream>
 #include "txn/lock_manager.h"
 
 // Thread & queue counts for StaticThreadPool initialization.
@@ -286,7 +286,84 @@ void TxnProcessor::RunOCCScheduler() {
 }
 
 void TxnProcessor::MVCCExecuteTxn(Txn *txn){
-  
+    // Read all necessary data for this transaction from storage (Note that you should lock the key before each read)
+    // Read from readset
+    for (set<Key>::iterator it = txn->readset_.begin(); it != txn->readset_.end(); ++it) {
+        Value result;
+        //Lock before read
+        storage_->Lock(*it);
+        if (storage_->Read(*it, &result, txn->unique_id_)) {
+            txn->reads_[*it] = result;
+        }
+        //Unlock after read
+        storage_->Unlock(*it);
+    }
+
+    // Read from writeset
+    for (set<Key>::iterator it = txn->writeset_.begin(); it != txn->writeset_.end(); ++it) {
+        Value result;
+        //Lock before read
+        storage_->Lock(*it);
+        if (storage_->Read(*it, &result, txn->unique_id_)) {
+            txn->reads_[*it] = result;
+        }
+        //Unlock after read
+        storage_->Unlock(*it);
+    }
+
+    //Execute the transaction logic (i.e. call Run() on the transaction)
+    txn->Run();
+    completed_txns_.Push(txn);
+
+    // Acquire all locks for keys in the write_set_
+    MVCCLockWriteKeys(txn);
+
+    // Call MVCCStorage::CheckWrite method to check all keys in the write_set_
+    bool valid = MVCCCheckWrites(txn);
+
+    if (valid) { //Each key passed the check
+        //Apply the writes
+        ApplyWrites(txn);
+
+        //Release all locks for keys in the write_set_
+        MVCCUnlockWriteKeys(txn);
+
+        // Hand the txn back to the RunScheduler and mark status as commited.
+        txn->status_ = COMMITTED;
+        txn_results_.Push(txn);
+    } else {
+        //Release all locks for keys in the write_set_
+        MVCCUnlockWriteKeys(txn);
+
+        //Cleanup txn
+        txn->reads_.clear();
+        txn->writes_.clear();
+        txn->status_ = INCOMPLETE;
+
+        //Completely restart the transaction.
+        NewTxnRequest(txn);        
+    }
+}
+
+bool TxnProcessor::MVCCCheckWrites(Txn* txn){
+    for (set<Key>::iterator it = txn->writeset_.begin(); it != txn->writeset_.end(); ++it){
+        if (storage_->CheckWrite(*it, txn->unique_id_) == false){
+          return false;
+        }
+    }
+    return true;
+}
+
+void TxnProcessor::MVCCLockWriteKeys(Txn* txn){
+  for (set<Key>::iterator it = txn->writeset_.begin();it != txn->writeset_.end(); ++it){
+      storage_->Lock(*it);
+  }
+}
+
+void TxnProcessor::MVCCUnlockWriteKeys(Txn* txn){
+  for (set<Key>::iterator it = txn->writeset_.begin();it != txn->writeset_.end(); ++it){
+      storage_->Unlock(*it);
+  }
 }
 
 void TxnProcessor::RunMVCCScheduler() {
@@ -299,7 +376,6 @@ void TxnProcessor::RunMVCCScheduler() {
   //
   // [For now, run serial scheduler in order to make it through the test
   // suite]
-
   Txn *txn;
   while (tp_.Active()) {
     if (txn_requests_.Pop(&txn)) {
@@ -307,7 +383,5 @@ void TxnProcessor::RunMVCCScheduler() {
     }
     
   }
-  
-  //RunSerialScheduler();
 }
 
