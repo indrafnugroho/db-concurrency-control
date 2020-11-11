@@ -83,6 +83,8 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
               return false;
           } 
       }
+  } else {
+    return false;
   }
   return true;
 }

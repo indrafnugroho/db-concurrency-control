@@ -7,7 +7,7 @@
 #include "txn/txn_processor.h"
 #include <stdio.h>
 #include <set>
-#include <iostream>
+
 #include "txn/lock_manager.h"
 
 // Thread & queue counts for StaticThreadPool initialization.
